@@ -1,0 +1,18 @@
+{
+  "manifest_version": 3,
+  "name": "Missevan Subtitle Loader",
+  "version": "1.0",
+  "icons": { 
+    "16": "M-16.png",
+    "48": "M-48.png",
+    "128": "M-128.png" 
+  },
+  "description": "Load local subtitle file and play on webpage",
+  "content_scripts": [
+    {
+      "matches": ["https://www.missevan.com/sound/player?id=*"],
+      "run_at": "document_idle",
+      "js": ["content.js"]
+    }
+  ]
+}
