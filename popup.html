@@ -3,19 +3,31 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link href="https://cdn.bootcdn.net/ajax/libs/tailwindcss/1.9.6/tailwind.min.css" rel="stylesheet">
 <style>
   body {
     margin: 0;
     padding: 20px;
     min-width: 300px;
   }
-  button {
-    font-size: 1em;
-  }
 </style>
 </head>
 <body>
-  <p>更新日志：</p>
+  <div class="container w-full flex flex-col">
+    <p class="text-lg text-bold">Update Log V1.1:</p>
+    <p>1. Support for lrc and fanjao-CSV formats(with color).</p>
+    <p>2. Some audio files now support automatic subtitle loading.</p>
+    <button class="mt-2 mb-2 p-2 bg-blue-500 text-white rounded mx-auto">
+      <a href="https://github.com/zhufree/subtitle-storage" target="_blank" rel="noopener noreferrer">
+        Contribute Subtitles for Automatic Loading
+      </a>
+    </button>
+    <button class="mt-2 mb-2 p-2 bg-green-500 text-white rounded rounded-full mx-auto">
+      <a href="https://ko-fi.com/Z8Z63PPH1" target="_blank" rel="noopener noreferrer">
+        Support Me
+      </a>
+    </button>
+  </div>
 </body>
-<script src="popup.js"></script>
+<!-- <script src="popup.js"></script> -->
 </html>

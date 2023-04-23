@@ -5,7 +5,6 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 let subtitleList = []
 let subtitleP
 
-
 // Function to handle selecting a local subtitle file
 function selectLocalSubtitleFile() {
   const input = document.createElement("input");
@@ -98,9 +97,8 @@ const config = { attributes: true, childList: true, characterData: true };
 // Pass in the target node, as well as the observer options
 observer.observe(target, config); 
 
-
-// Wait for the page to finish loading
-window.addEventListener("load", function() {
+function addElements() {
+  // add load file btn
   const button = document.createElement("button")
   button.style.backgroundColor = "#065279"
   button.style.color = "white"
@@ -111,6 +109,8 @@ window.addEventListener("load", function() {
   });
   const switches = document.querySelector("div.danmaku-area")
   switches.appendChild(button)
+
+  // add display area
   const newDiv = document.createElement("div")
   newDiv.style.height = "3rem"
   newDiv.setAttribute("id", "load-subtitle-container")
@@ -126,6 +126,46 @@ window.addEventListener("load", function() {
   newDiv.appendChild(newP)
   const soundContainer = document.querySelector(".web-sound-container")
   soundContainer.insertBefore(newDiv, soundContainer.firstChild)
+}
+
+function fetchSubtitleMap() {
+  fetch('https://raw.githubusercontent.com/zhufree/subtitle-storage/main/missevan-subtitle-map.json')
+    .then(response => response.json())
+    .then(data => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const soundId = urlParams.get('id')
+      if (Object.keys(data).includes(soundId)) {
+        const subtitleUrl = data[soundId]
+        console.log(subtitleUrl)
+        fetch(subtitleUrl)
+        .then(response => response.text())
+        .then(text => {
+          subtitleList = []
+          const urlParts = subtitleUrl.split('/')
+          const fileName = urlParts[urlParts.length - 1]
+          if (!subtitleP) {
+            subtitleP = document.getElementById('subtitle-line')
+          }
+          subtitleP.innerText = `Subtitle: ${fileName} loaded automatically`
+          if (subtitleUrl.endsWith('.srt')) {
+            parseSRT(text)
+          } else if (subtitleUrl.endsWith('.lrc')) {
+            parseLRC(text)
+          } else if (subtitleUrl.endsWith('.csv')) {
+            parseCSV(text)
+          }
+          let subtitleContainer = document.getElementById('load-subtitle-container')
+          subtitleContainer.style.display = 'block'
+        })
+      }
+    })
+    .catch(error => console.error(error))
+}
+
+// Wait for the page to finish loading
+window.addEventListener("load", function() {
+  addElements()
+  fetchSubtitleMap()
 })
 
 function parseSRT(text) {

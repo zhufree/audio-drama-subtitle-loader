@@ -1,13 +1,22 @@
 {
   "manifest_version": 3,
-  "name": "Missevan Subtitle Loader",
-  "version": "1.0",
+  "name": "Audio Drama Subtitle Loader",
+  "version": "1.1",
   "icons": { 
     "16": "M-16.png",
     "48": "M-48.png",
     "128": "M-128.png" 
   },
   "description": "Load local subtitle file and play on webpage",
+  "action": {
+    "default_icon": {             
+      "16": "M-16.png",
+      "24": "M-48.png",
+      "32": "M-128.png" 
+    },
+    "default_title": "Click Me",
+    "default_popup": "popup.html"
+  },
   "content_scripts": [
     {
       "matches": ["https://www.missevan.com/sound/player?id=*"],
