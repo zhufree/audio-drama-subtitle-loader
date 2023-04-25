@@ -19,7 +19,7 @@
   },
   "content_scripts": [
     {
-      "matches": ["https://www.missevan.com/sound/player?id=*"],
+      "matches": ["https://www.missevan.com/sound/player?id=*", "https://m.missevan.com/sound/*"],
       "run_at": "document_idle",
       "js": ["content.js"]
     }

@@ -4,12 +4,23 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
 let subtitleList = []
 let subtitleP
+let defaultColor = '#111111'
+let defaultSize = 1
+const localColor = localStorage.getItem('subtitle-color')
+const localSize = localStorage.getItem('subtitle-size')
+if (localColor && (localColor.length || localColor.length == 9) && localColor.startsWith('#')) {
+  defaultColor = localColor
+}
+if (localSize) {
+  defaultSize = parseInt(localSize)/100
+}
+console.log(localStorage)
 
 // Function to handle selecting a local subtitle file
 function selectLocalSubtitleFile() {
   const input = document.createElement("input");
   input.type = "file";
-  input.accept = ".srt,.lrc,.ass,.csv";
+  input.accept = ".srt,.lrc,.csv"; //,.ass
   input.addEventListener("change", function() {
     const file = input.files[0]
     const fileName = file.name;
@@ -46,8 +57,6 @@ function selectLocalSubtitleFile() {
 }
 
 
-
-const target = document.querySelector('div.mpsp');
 let oldTime = ''
 const observer = new MutationObserver(function(mutations) {
   mutations.forEach(function(mutation) {
@@ -76,7 +85,7 @@ function refreshSubtitle(time) {
       } else {
         subtitleToShow += sub.content
       }
-      color = sub.color?sub.color:'#000000'
+      color = sub.color?sub.color: defaultColor
     }
     if (sub.endSecond == currentSecond) {
       subtitleToEnd += sub.content
@@ -95,48 +104,50 @@ function refreshSubtitle(time) {
 const config = { attributes: true, childList: true, characterData: true };
 
 // Pass in the target node, as well as the observer options
-observer.observe(target, config); 
 
 function addElements() {
   // add load file btn
   const button = document.createElement("button")
   button.style.backgroundColor = "#065279"
   button.style.color = "white"
+  button.style.fontSize = (isMsite ? "12px" : "1rem") 
   button.innerText = "Select sub file"
+  if (isMsite) {
+    button.classList.add('btn-larger')
+    button.classList.add('btn-red')
+  }
   button.addEventListener("click", function() {
     // Call a function to handle selecting a local subtitle file
     selectLocalSubtitleFile()
   });
-  const switches = document.querySelector("div.danmaku-area")
+  const switches = isMsite ? document.querySelector('div.sound-action-container') : document.querySelector("div.danmaku-area")
   switches.appendChild(button)
 
   // add display area
   const newDiv = document.createElement("div")
-  newDiv.style.height = "3rem"
+  newDiv.style.height = "auto"
   newDiv.setAttribute("id", "load-subtitle-container")
   newDiv.style.width = "100%"
   newDiv.style.display = 'none'
   const newP = document.createElement("p")
   newP.setAttribute("id", "subtitle-line")
-  newP.style.width = "70%"
+  newP.style.width = isMsite ? "100%" : "70%"
   newP.style.margin = '0 auto'
-  newP.style.color = '#f20c00'
-  newP.style.fontSize = '2rem'
+  newP.style.color = '#000000'
+  newP.style.fontSize =  1.5 * defaultSize + 'rem'
   newP.style.textAlign = 'center'
   newDiv.appendChild(newP)
-  const soundContainer = document.querySelector(".web-sound-container")
+  const soundContainer = isMsite? document.querySelector('.danmaku-stage-wrap') : document.querySelector(".web-sound-container")
   soundContainer.insertBefore(newDiv, soundContainer.firstChild)
 }
+let soundId = -1
 
 function fetchSubtitleMap() {
   fetch('https://raw.githubusercontent.com/zhufree/subtitle-storage/main/missevan-subtitle-map.json')
     .then(response => response.json())
     .then(data => {
-      const urlParams = new URLSearchParams(window.location.search);
-      const soundId = urlParams.get('id')
       if (Object.keys(data).includes(soundId)) {
         const subtitleUrl = data[soundId]
-        console.log(subtitleUrl)
         fetch(subtitleUrl)
         .then(response => response.text())
         .then(text => {
@@ -146,7 +157,7 @@ function fetchSubtitleMap() {
           if (!subtitleP) {
             subtitleP = document.getElementById('subtitle-line')
           }
-          subtitleP.innerText = `Subtitle: ${fileName} loaded automatically`
+          subtitleP.innerText = `Subtitle: ${fileName} loaded`
           if (subtitleUrl.endsWith('.srt')) {
             parseSRT(text)
           } else if (subtitleUrl.endsWith('.lrc')) {
@@ -162,10 +173,21 @@ function fetchSubtitleMap() {
     .catch(error => console.error(error))
 }
 
+let isMsite = false
 // Wait for the page to finish loading
 window.addEventListener("load", function() {
+  if (window.location.href.includes('www.missevan')) {
+    const urlParams = new URLSearchParams(window.location.search);
+    soundId = urlParams.get('id')
+  } else {
+    const soundIdRegex = /sound\/(\d+)/
+    soundId = window.location.href.match(soundIdRegex)[1]
+    isMsite = true
+  }
   addElements()
   fetchSubtitleMap()
+  const target = isMsite ? document.querySelector('.played-time') : document.querySelector('div.mpsp');
+  observer.observe(target, config); 
 })
 
 function parseSRT(text) {
@@ -234,7 +256,6 @@ function parseCSV(text) {
       'color': color
     })
   }
-  console.log(subtitleList)
 }
 
 function caculateCSVTimeFormat(str) {
