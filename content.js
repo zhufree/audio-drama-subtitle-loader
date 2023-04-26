@@ -3,18 +3,17 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 });
 
 let subtitleList = []
-let subtitleP
+let subtitleP = []
 let defaultColor = '#111111'
 let defaultSize = 1
-const localColor = localStorage.getItem('subtitle-color')
-const localSize = localStorage.getItem('subtitle-size')
-if (localColor && (localColor.length || localColor.length == 9) && localColor.startsWith('#')) {
-  defaultColor = localColor
-}
-if (localSize) {
-  defaultSize = parseInt(localSize)/100
-}
-console.log(localStorage)
+// const localColor = localStorage.getItem('subtitle-color')
+// const localSize = localStorage.getItem('subtitle-size')
+// if (localColor && (localColor.length || localColor.length == 9) && localColor.startsWith('#')) {
+//   defaultColor = localColor
+// }
+// if (localSize) {
+//   defaultSize = parseInt(localSize)/100
+// }
 
 // Function to handle selecting a local subtitle file
 function selectLocalSubtitleFile() {
@@ -30,10 +29,11 @@ function selectLocalSubtitleFile() {
       reader.addEventListener("load", function() {
         const contents = reader.result
         subtitleList = []
-        if (!subtitleP) {
-          subtitleP = document.getElementById('subtitle-line')
+        subtitleToShow = []
+        if (subtitleP.length === 0) {
+          subtitleP = document.getElementsByClassName('subtitle-line')
         }
-        subtitleP.innerText = `Load file: ${fileName}`
+        subtitleP[0].innerText = `Load file: ${fileName}`
 
         if (fileExtension === 'srt') {
           parseSRT(contents)
@@ -69,34 +69,41 @@ const observer = new MutationObserver(function(mutations) {
   })
 })
 
+let subtitleToShow = []
 function refreshSubtitle(time) {
-  if (!subtitleP) {
-    subtitleP = document.getElementById('subtitle-line')
+  if (subtitleP.length === 0) {
+    subtitleP = document.getElementsByClassName('subtitle-line')
   }
   const [min, sec] = time.split(':').map((i) => parseInt(i))
   let currentSecond =  min * 60 + sec
-  let subtitleToShow = ''
-  let subtitleToEnd = ''
-  let color = ''
   for (const sub of subtitleList) {
-    if (sub.startSecond == currentSecond) {
-      if (sub.endSecond == -1) {
-        subtitleToShow = sub.content
-      } else {
-        subtitleToShow += sub.content
+    if (sub.startSecond <= currentSecond && sub.endSecond > currentSecond) {
+      if (!subtitleToShow.find((subtitle) => subtitle.content === sub.content)) {
+        subtitleToShow.push(sub)
       }
-      color = sub.color?sub.color: defaultColor
-    }
-    if (sub.endSecond == currentSecond) {
-      subtitleToEnd += sub.content
+    } else {
+      subtitleToShow = subtitleToShow.filter((subtitle) => subtitle.content !== sub.content)
     }
   }
-  if (subtitleToShow !== '') {
-    subtitleP.style.color = color
-    subtitleP.innerText = subtitleToShow
-  }
-  if (subtitleP.innerText == subtitleToEnd) {
-    subtitleP.innerText = ''
+  if (subtitleToShow.length > 0) {
+    const firstSub = subtitleToShow[0]
+    subtitleP[0].style.color = firstSub.color ? firstSub.color : defaultColor
+    subtitleP[0].innerText = firstSub.content
+    if (subtitleToShow.length > 1) {
+      const secondSub = subtitleToShow[1]
+      subtitleP[1].style.color = secondSub.color ? secondSub.color : defaultColor
+      subtitleP[1].innerText = secondSub.content
+    } else {
+      subtitleP[1].innerText = ''
+      subtitleP[1].style.color = defaultColor
+    }
+  } else {
+    subtitleP[0].style.color = defaultColor
+    subtitleP[1].style.color = defaultColor
+    if (!subtitleP[0].innerText.includes('Load')) {
+      subtitleP[0].innerText = ''
+    }
+    subtitleP[1].innerText = ''
   }
 }
 
@@ -126,19 +133,25 @@ function addElements() {
   // add display area
   const newDiv = document.createElement("div")
   newDiv.style.height = "auto"
+  newDiv.style.minHeight = "4.5rem"
   newDiv.setAttribute("id", "load-subtitle-container")
   newDiv.style.width = "100%"
   newDiv.style.display = 'none'
-  const newP = document.createElement("p")
-  newP.setAttribute("id", "subtitle-line")
-  newP.style.width = isMsite ? "100%" : "70%"
-  newP.style.margin = '0 auto'
-  newP.style.color = '#000000'
-  newP.style.fontSize =  1.5 * defaultSize + 'rem'
-  newP.style.textAlign = 'center'
-  newDiv.appendChild(newP)
+  addNewP(newDiv)
+  addNewP(newDiv)
   const soundContainer = isMsite? document.querySelector('.danmaku-stage-wrap') : document.querySelector(".web-sound-container")
   soundContainer.insertBefore(newDiv, soundContainer.firstChild)
+}
+
+function addNewP(parentNode) {
+  const newP = document.createElement("p")
+  newP.setAttribute("class", "subtitle-line")
+  newP.style.width = isMsite ? "100%" : "80%"
+  newP.style.margin = '0 auto'
+  newP.style.color = '#111111'
+  newP.style.fontSize =  1.5 * defaultSize + 'rem'
+  newP.style.textAlign = 'center'
+  parentNode.appendChild(newP)
 }
 let soundId = -1
 
@@ -154,10 +167,10 @@ function fetchSubtitleMap() {
           subtitleList = []
           const urlParts = subtitleUrl.split('/')
           const fileName = urlParts[urlParts.length - 1]
-          if (!subtitleP) {
-            subtitleP = document.getElementById('subtitle-line')
+          if (subtitleP.length === 0) {
+            subtitleP = document.getElementsByClassName('subtitle-line')
           }
-          subtitleP.innerText = `Subtitle: ${fileName} loaded`
+          subtitleP[0].innerText = `Load Subtitle: ${fileName}`
           if (subtitleUrl.endsWith('.srt')) {
             parseSRT(text)
           } else if (subtitleUrl.endsWith('.lrc')) {
@@ -242,13 +255,16 @@ function parseLRC(text) {
 }
 
 function parseCSV(text) {
-  const rows = text.split('\n') // 将CSV字符串按行切割
+  const rows = text.split(/\r?\n/) // 将CSV字符串按行切割
   for (let i = 1; i < rows.length; i++) {
+    if (rows[i].length === 0) {
+      continue
+    }
     const [startTime, endTime, ...rest] = rows[i].split(',')
     const startSecond = caculateCSVTimeFormat(startTime)
     const endSecond = caculateCSVTimeFormat(endTime)
     const content = rest[0]
-    const color = rest[1] !== '' ? rest[1] : '#000000'
+    const color = rest[1] !== '' ? rest[1] : '#111111'
     subtitleList.push({
       'content': content,
       'startSecond': startSecond,
