@@ -260,11 +260,32 @@ function parseCSV(text) {
     if (rows[i].length === 0) {
       continue
     }
-    const [startTime, endTime, ...rest] = rows[i].split(',')
+    const currentLine = rows[i]
+    const lineItems = []
+    let count = 0
+    let startIndex = 0
+    for (var j = 0; j < currentLine.length; j++) {
+      if (currentLine[j] === ',') {
+        count++;
+        if (count <= 2) {
+          lineItems.push(currentLine.substring(startIndex, j));
+          startIndex = j + 1;
+        }
+      }
+    }
+    let color = '#111111'
+    let content = ''
+    if (!currentLine.endsWith(',')) {
+      const contentEndIndex = currentLine.indexOf(',#')
+      color = '#' + currentLine.split(',#')[1]
+      content = currentLine.substring(startIndex, contentEndIndex)
+    } else {
+      content = currentLine.substring(startIndex, currentLine.length-1)
+    }
+    const startTime = lineItems[0]
+    const endTime = lineItems[1]
     const startSecond = caculateCSVTimeFormat(startTime)
     const endSecond = caculateCSVTimeFormat(endTime)
-    const content = rest[0]
-    const color = rest[1] !== '' ? rest[1] : '#111111'
     subtitleList.push({
       'content': content,
       'startSecond': startSecond,
