@@ -4,7 +4,8 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
 let subtitleList = []
 let subtitleP = []
-let defaultColor = '#111111'
+let duration = -1
+let defaultColor = '#EEEEEE'
 let defaultSize = 1
 // const localColor = localStorage.getItem('subtitle-color')
 // const localSize = localStorage.getItem('subtitle-size')
@@ -57,32 +58,18 @@ function selectLocalSubtitleFile() {
 }
 
 
-let oldTime = ''
-const observer = new MutationObserver(function(mutations) {
-  mutations.forEach(function(mutation) {
-    // Respond to the mutation (e.g. update subtitle display)
-    let time = mutation.target.innerText
-    if (time!= oldTime) {
-      refreshSubtitle(time)
-      oldTime = time
-    } 
-  })
-})
-
 let subtitleToShow = []
-function refreshSubtitle(time) {
+function refreshSubtitle(currentTime) {
   if (subtitleP.length === 0) {
     subtitleP = document.getElementsByClassName('subtitle-line')
   }
-  const [min, sec] = time.split(':').map((i) => parseInt(i))
-  let currentSecond =  min * 60 + sec
   for (const sub of subtitleList) {
-    if (sub.startSecond <= currentSecond && sub.endSecond > currentSecond) {
-      if (!subtitleToShow.find((subtitle) => subtitle.content === sub.content)) {
+    if (sub.startSecond <= currentTime && sub.endSecond > currentTime) {
+      if (!subtitleToShow.find((subtitle) => subtitle.id === sub.id)) {
         subtitleToShow.push(sub)
       }
     } else {
-      subtitleToShow = subtitleToShow.filter((subtitle) => subtitle.content !== sub.content)
+      subtitleToShow = subtitleToShow.filter((subtitle) => subtitle.id !== sub.id)
     }
   }
   if (subtitleToShow.length > 0) {
@@ -107,31 +94,27 @@ function refreshSubtitle(time) {
   }
 }
 
-// Configuration of the observer:
-const config = { attributes: true, childList: true, characterData: true };
-
-// Pass in the target node, as well as the observer options
 
 function addElements() {
   // add load file btn
   const button = document.createElement("button")
   button.style.backgroundColor = "#065279"
   button.style.color = "white"
-  button.style.fontSize = (isMsite ? "12px" : "1rem") 
+  button.style.fontSize = "1rem" 
   button.innerText = "Select sub file"
-  if (isMsite) {
-    button.classList.add('btn-larger')
-    button.classList.add('btn-red')
-  }
   button.addEventListener("click", function() {
     // Call a function to handle selecting a local subtitle file
     selectLocalSubtitleFile()
   });
-  const switches = isMsite ? document.querySelector('div.sound-action-container') : document.querySelector("div.danmaku-area")
+  const switches = document.querySelector("div.danmaku-area")
   switches.appendChild(button)
 
   // add display area
   const newDiv = document.createElement("div")
+  newDiv.style.position = 'fixed'
+  newDiv.style.background = '#33333388'
+  newDiv.style.bottom = '50px'
+  newDiv.style.zIndex = 99
   newDiv.style.height = "auto"
   newDiv.style.minHeight = "4.5rem"
   newDiv.setAttribute("id", "load-subtitle-container")
@@ -139,17 +122,18 @@ function addElements() {
   newDiv.style.display = 'none'
   addNewP(newDiv)
   addNewP(newDiv)
-  const soundContainer = isMsite? document.querySelector('.danmaku-stage-wrap') : document.querySelector(".web-sound-container")
+  const soundContainer = document.querySelector("#new_content")
   soundContainer.insertBefore(newDiv, soundContainer.firstChild)
 }
 
 function addNewP(parentNode) {
   const newP = document.createElement("p")
   newP.setAttribute("class", "subtitle-line")
-  newP.style.width = isMsite ? "100%" : "80%"
+  newP.style.width = "80%"
   newP.style.margin = '0 auto'
-  newP.style.color = '#111111'
+  newP.style.color = '#EEEEEE'
   newP.style.fontSize =  1.5 * defaultSize + 'rem'
+  newP.style.textShadow = '0 0 #111'
   newP.style.textAlign = 'center'
   parentNode.appendChild(newP)
 }
@@ -186,25 +170,29 @@ function fetchSubtitleMap() {
     .catch(error => console.error(error))
 }
 
-let isMsite = false
 // Wait for the page to finish loading
 window.addEventListener("load", function() {
-  if (window.location.href.includes('www.missevan')) {
-    const urlParams = new URLSearchParams(window.location.search);
-    soundId = urlParams.get('id')
-  } else {
-    const soundIdRegex = /sound\/(\d+)/
-    soundId = window.location.href.match(soundIdRegex)[1]
-    isMsite = true
-  }
+  const urlParams = new URLSearchParams(window.location.search);
+  soundId = urlParams.get('id')
+
+  const [min, second] = document.querySelector('.mpsa').innerText.split(':').map((i) => parseInt(i))
+  duration = min * 60 + second
+
   addElements()
   fetchSubtitleMap()
-  const target = isMsite ? document.querySelector('.played-time') : document.querySelector('div.mpsp');
-  observer.observe(target, config); 
+  const interval = setInterval(function() {
+    const percent = document.querySelector('div.mpl').style.width.replace('%', '')
+    if (percent == 100) {
+      clearInterval(interval)
+    }
+    const currentTime = parseFloat(percent) / 100 * duration
+    refreshSubtitle(currentTime)
+  }, 100) 
 })
 
 function parseSRT(text) {
 	const subs = text.split('\r\n\r\n')
+  let index = 0
 	for (let sub of subs) {
 		if (sub.length > 0) {
 			const lines = sub.split('\r\n')
@@ -212,22 +200,20 @@ function parseSRT(text) {
       const endTS = lines[1].split(' --> ')[1]
       const [hour1, min1, second1, milliSecond1] = startTS.split(/:|,/).map((i) => parseInt(i))
 
-			let startSecond = hour1*3600 + min1*60+second1
-      if (milliSecond1 > 500) {
-        startSecond += 1
-      }
+			let startSecond = hour1*3600 + min1*60+second1 + milliSecond1 / 1000
+
       let [hour2, min2, second2, milliSecond2] = endTS.split(/:|,/).map((i) => parseInt(i))
-      let endSecond = hour2*3600 + min2*60+second2
-      if (milliSecond2 > 500) {
-        endSecond += 1
-      }
-			for (index in lines) {
-				if (index > 1 && lines[index].length > 0) {
+      let endSecond = hour2*3600 + min2*60+second2 + milliSecond2 / 1000
+
+			for (lineId in lines) {
+				if (lineId > 1 && lines[lineId].length > 0) {
           subtitleList.push({
-            'content': lines[index],
+            'id': index,
+            'content': lines[lineId],
             'startSecond': startSecond,
             'endSecond': endSecond
           })
+          index ++
 				}
 			}
 		}
@@ -236,26 +222,28 @@ function parseSRT(text) {
 
 function parseLRC(text) {
   const subs = text.split('\r\n').filter((sub) => sub.startsWith('['))
+  let index = 0
 	for (let sub of subs) {
 		if (sub.length > 0) {
 			const timeAndContent = sub.split(']')
       const [min, sec, milliSecond] = timeAndContent[0].slice(1).split(/:|,/).map((i) => parseInt(i))
       const content = timeAndContent[1].trim()
-      let startSecond = min * 60 + sec
-      if (milliSecond > 500) {
-        startSecond += 1
-      }
+      let startSecond = min * 60 + sec + milliSecond / 1000
+
       subtitleList.push({
+        'id': index,
         'content': content,
         'startSecond': startSecond,
         'endSecond': -1
       })
+      index ++
 		}
 	}
 }
 
 function parseCSV(text) {
   const rows = text.split(/\r?\n/) // 将CSV字符串按行切割
+  let index = 0
   for (let i = 1; i < rows.length; i++) {
     if (rows[i].length === 0) {
       continue
@@ -287,20 +275,19 @@ function parseCSV(text) {
     const startSecond = caculateCSVTimeFormat(startTime)
     const endSecond = caculateCSVTimeFormat(endTime)
     subtitleList.push({
+      'id': index,
       'content': content,
       'startSecond': startSecond,
       'endSecond': endSecond,
       'color': color
     })
+    index ++
   }
 }
 
 function caculateCSVTimeFormat(str) {
   const [time, miliSeconds] = str.split('.')
   const [hours, minutes, seconds] = time.split(':') // 将时间按冒号切成小时、分钟、秒
-  let totalSeconds = parseInt(hours) * 3600 + parseInt(minutes) * 60 + parseInt(seconds); // 计算总秒数
-  if (parseInt(miliSeconds) > 50) {
-    totalSeconds += 1
-  }
+  let totalSeconds = parseInt(hours) * 3600 + parseInt(minutes) * 60 + parseInt(seconds) + miliSeconds/100 // 计算总秒数
   return totalSeconds
 }
