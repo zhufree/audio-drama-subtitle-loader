@@ -35,7 +35,6 @@ function selectLocalSubtitleFile() {
           subtitleP = document.getElementsByClassName('subtitle-line')
         }
         subtitleP[0].innerText = `Load file: ${fileName}`
-
         if (fileExtension === 'srt') {
           parseSRT(contents)
         } else if (fileExtension === 'lrc') {
@@ -47,10 +46,9 @@ function selectLocalSubtitleFile() {
         } else {
           subtitleP.innerText += 'Unsupported Format'
         }
-        
       })
       let subtitleContainer = document.getElementById('load-subtitle-container')
-      subtitleContainer.style.display = 'block'
+      subtitleContainer.style.display = 'flex'
       reader.readAsText(file)
     }
   });
@@ -64,12 +62,21 @@ function refreshSubtitle(currentTime) {
     subtitleP = document.getElementsByClassName('subtitle-line')
   }
   for (const sub of subtitleList) {
-    if (sub.startSecond <= currentTime && sub.endSecond > currentTime) {
-      if (!subtitleToShow.find((subtitle) => subtitle.id === sub.id)) {
-        subtitleToShow.push(sub)
+    if (sub.endSecond > -1) {
+      if (sub.startSecond <= currentTime && sub.endSecond > currentTime) {
+        if (!subtitleToShow.find((subtitle) => subtitle.id === sub.id)) {
+          subtitleToShow.push(sub)
+        }
+      } else {
+        subtitleToShow = subtitleToShow.filter((subtitle) => subtitle.id !== sub.id)
       }
     } else {
-      subtitleToShow = subtitleToShow.filter((subtitle) => subtitle.id !== sub.id)
+      // handle lrc
+      if (currentTime > sub.startSecond) {
+        if (!subtitleToShow.find((subtitle) => subtitle.id === sub.id)) {
+          subtitleToShow = [sub]
+        }
+      }
     }
   }
   if (subtitleToShow.length > 0) {
@@ -111,15 +118,20 @@ function addElements() {
 
   // add display area
   const newDiv = document.createElement("div")
+  newDiv.setAttribute("id", "load-subtitle-container")
+  // newDiv.style = 'position: fixed; background: rgba(51, 51, 51, 0.533); bottom: 50px; z-index: 99; min-height: 4.5rem; width: 100%; align-items: center; justify-content: center; flex-direction: column; display: flex !important;'
   newDiv.style.position = 'fixed'
   newDiv.style.background = '#33333388'
   newDiv.style.bottom = '50px'
   newDiv.style.zIndex = 99
-  newDiv.style.height = "auto"
   newDiv.style.minHeight = "4.5rem"
-  newDiv.setAttribute("id", "load-subtitle-container")
   newDiv.style.width = "100%"
-  newDiv.style.display = 'none'
+  // newDiv.style.display= "-webkit-flex"
+  newDiv.style.display= "flex"
+  newDiv.style.alignItems = 'center'
+  newDiv.style.justifyContent = 'center'
+  newDiv.style.flexDirection = 'column'
+  console.log(newDiv)
   addNewP(newDiv)
   addNewP(newDiv)
   const soundContainer = document.querySelector("#new_content")
@@ -129,8 +141,7 @@ function addElements() {
 function addNewP(parentNode) {
   const newP = document.createElement("p")
   newP.setAttribute("class", "subtitle-line")
-  newP.style.width = "80%"
-  newP.style.margin = '0 auto'
+  newP.style.width = "100%"
   newP.style.color = '#EEEEEE'
   newP.style.fontSize =  1.5 * defaultSize + 'rem'
   newP.style.textShadow = '0 0 #111'
@@ -163,7 +174,7 @@ function fetchSubtitleMap() {
             parseCSV(text)
           }
           let subtitleContainer = document.getElementById('load-subtitle-container')
-          subtitleContainer.style.display = 'block'
+          subtitleContainer.style.display = 'flex'
         })
       }
     })
@@ -221,15 +232,14 @@ function parseSRT(text) {
 }
 
 function parseLRC(text) {
-  const subs = text.split('\r\n').filter((sub) => sub.startsWith('['))
+  const subs = text.split(/\r?\n/).filter((sub) => sub.startsWith('['))
   let index = 0
 	for (let sub of subs) {
 		if (sub.length > 0) {
 			const timeAndContent = sub.split(']')
-      const [min, sec, milliSecond] = timeAndContent[0].slice(1).split(/:|,/).map((i) => parseInt(i))
+      const [min, sec, milliSecond] = timeAndContent[0].slice(1).split(/:|\./).map((i) => parseInt(i))
       const content = timeAndContent[1].trim()
-      let startSecond = min * 60 + sec + milliSecond / 1000
-
+      let startSecond = min * 60 + sec + milliSecond / 100
       subtitleList.push({
         'id': index,
         'content': content,
@@ -261,7 +271,7 @@ function parseCSV(text) {
         }
       }
     }
-    let color = '#111111'
+    let color = defaultColor
     let content = ''
     if (!currentLine.endsWith(',')) {
       const contentEndIndex = currentLine.indexOf(',#')

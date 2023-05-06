@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Audio Drama Subtitle Loader",
-  "version": "1.4",
+  "version": "1.3.7",
   "icons": { 
     "16": "M-16.png",
     "48": "M-48.png",
@@ -19,7 +19,7 @@
   },
   "content_scripts": [
     {
-      "matches": ["https://www.missevan.com/sound/player?id=*", "https://m.missevan.com/sound/*"],
+      "matches": ["https://www.missevan.com/sound/player?id=*"],
       "run_at": "document_idle",
       "js": ["content.js"]
     }
