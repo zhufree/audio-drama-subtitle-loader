@@ -127,11 +127,10 @@ function addElements() {
   newDiv.style.minHeight = "4.5rem"
   newDiv.style.width = "100%"
   // newDiv.style.display= "-webkit-flex"
-  newDiv.style.display= "flex"
+  newDiv.style.display= "none"
   newDiv.style.alignItems = 'center'
   newDiv.style.justifyContent = 'center'
   newDiv.style.flexDirection = 'column'
-  console.log(newDiv)
   addNewP(newDiv)
   addNewP(newDiv)
   const soundContainer = document.querySelector("#new_content")
@@ -202,11 +201,11 @@ window.addEventListener("load", function() {
 })
 
 function parseSRT(text) {
-	const subs = text.split('\r\n\r\n')
+	const subs = text.split(/\r?\n\r?\n/)
   let index = 0
 	for (let sub of subs) {
 		if (sub.length > 0) {
-			const lines = sub.split('\r\n')
+			const lines = sub.split(/\r?\n/)
 			const startTS = lines[1].split(' --> ')[0]
       const endTS = lines[1].split(' --> ')[1]
       const [hour1, min1, second1, milliSecond1] = startTS.split(/:|,/).map((i) => parseInt(i))
