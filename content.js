@@ -3,8 +3,10 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 });
 
 let subtitleList = []
+let subtitleToShow = []
 let subtitleP = []
 let duration = -1
+let soundId = -1
 let defaultColor = '#EEEEEE'
 let defaultSize = 1
 // const localColor = localStorage.getItem('subtitle-color')
@@ -56,7 +58,6 @@ function selectLocalSubtitleFile() {
 }
 
 
-let subtitleToShow = []
 function refreshSubtitle(currentTime) {
   if (subtitleP.length === 0) {
     subtitleP = document.getElementsByClassName('subtitle-line')
@@ -112,21 +113,19 @@ function addElements() {
   button.addEventListener("click", function() {
     // Call a function to handle selecting a local subtitle file
     selectLocalSubtitleFile()
-  });
+  })
   const switches = document.querySelector("div.danmaku-area")
   switches.appendChild(button)
 
   // add display area
   const newDiv = document.createElement("div")
   newDiv.setAttribute("id", "load-subtitle-container")
-  // newDiv.style = 'position: fixed; background: rgba(51, 51, 51, 0.533); bottom: 50px; z-index: 99; min-height: 4.5rem; width: 100%; align-items: center; justify-content: center; flex-direction: column; display: flex !important;'
   newDiv.style.position = 'fixed'
   newDiv.style.background = '#33333388'
   newDiv.style.bottom = '50px'
   newDiv.style.zIndex = 99
   newDiv.style.minHeight = "4.5rem"
   newDiv.style.width = "100%"
-  // newDiv.style.display= "-webkit-flex"
   newDiv.style.display= "none"
   newDiv.style.alignItems = 'center'
   newDiv.style.justifyContent = 'center'
@@ -147,7 +146,7 @@ function addNewP(parentNode) {
   newP.style.textAlign = 'center'
   parentNode.appendChild(newP)
 }
-let soundId = -1
+
 
 function fetchSubtitleMap() {
   fetch('https://raw.githubusercontent.com/zhufree/subtitle-storage/main/missevan-subtitle-map.json')
@@ -180,14 +179,27 @@ function fetchSubtitleMap() {
     .catch(error => console.error(error))
 }
 
+const config = { attributes: true, childList: true, characterData: true };
+const observer = new MutationObserver(function(mutations) {
+  mutations.forEach(function(mutation) {
+    // Respond to the mutation (e.g. update subtitle display)
+    let time = mutation.target.innerText
+    if (!time.startsWith('0')) {
+      const [min, second] = document.querySelector('.mpsa').innerText.split(':').map((i) => parseInt(i))
+      const totalTime = document.querySelector('.mpsa').innerText
+      duration = min * 60 + second
+      observer.disconnect()
+    } 
+  })
+})
+
 // Wait for the page to finish loading
 window.addEventListener("load", function() {
   const urlParams = new URLSearchParams(window.location.search);
   soundId = urlParams.get('id')
-
-  const [min, second] = document.querySelector('.mpsa').innerText.split(':').map((i) => parseInt(i))
-  duration = min * 60 + second
-
+  // wait for the total time to show (not 0:00)
+  const observerTarget = document.querySelector('.mpsa')
+  observer.observe(observerTarget, config)
   addElements()
   fetchSubtitleMap()
   const interval = setInterval(function() {
@@ -201,6 +213,7 @@ window.addEventListener("load", function() {
 })
 
 function parseSRT(text) {
+  console.log('Start parse SRT file...')
 	const subs = text.split(/\r?\n\r?\n/)
   let index = 0
 	for (let sub of subs) {
@@ -209,12 +222,9 @@ function parseSRT(text) {
 			const startTS = lines[1].split(' --> ')[0]
       const endTS = lines[1].split(' --> ')[1]
       const [hour1, min1, second1, milliSecond1] = startTS.split(/:|,/).map((i) => parseInt(i))
-
 			let startSecond = hour1*3600 + min1*60+second1 + milliSecond1 / 1000
-
       let [hour2, min2, second2, milliSecond2] = endTS.split(/:|,/).map((i) => parseInt(i))
       let endSecond = hour2*3600 + min2*60+second2 + milliSecond2 / 1000
-
 			for (lineId in lines) {
 				if (lineId > 1 && lines[lineId].length > 0) {
           subtitleList.push({
@@ -231,6 +241,7 @@ function parseSRT(text) {
 }
 
 function parseLRC(text) {
+  console.log('Start parse LRC file...')
   const subs = text.split(/\r?\n/).filter((sub) => sub.startsWith('['))
   let index = 0
 	for (let sub of subs) {
@@ -251,6 +262,7 @@ function parseLRC(text) {
 }
 
 function parseCSV(text) {
+  console.log('Start parse CSV file...')
   const rows = text.split(/\r?\n/) // 将CSV字符串按行切割
   let index = 0
   for (let i = 1; i < rows.length; i++) {
@@ -292,6 +304,7 @@ function parseCSV(text) {
     })
     index ++
   }
+  console.log(`Get ${index} sub items...`)
 }
 
 function caculateCSVTimeFormat(str) {
