@@ -7,7 +7,8 @@ let subtitleToShow = []
 let subtitleP = []
 let duration = -1
 let soundId = -1
-let defaultColor = '#EEEEEE'
+let defaultFontColor = localStorage.getItem('subtitle-font-color') ?? '#333333'
+let defaultBgColor = localStorage.getItem('subtitle-bg-color') ?? '#333333' // 88
 let defaultSize = 1
 // const localColor = localStorage.getItem('subtitle-color')
 // const localSize = localStorage.getItem('subtitle-size')
@@ -49,7 +50,7 @@ function selectLocalSubtitleFile() {
           subtitleP.innerText += 'Unsupported Format'
         }
       })
-      let subtitleContainer = document.getElementById('load-subtitle-container')
+      let subtitleContainer = document.getElementById('subtitle-container')
       subtitleContainer.style.display = 'flex'
       reader.readAsText(file)
     }
@@ -82,19 +83,19 @@ function refreshSubtitle(currentTime) {
   }
   if (subtitleToShow.length > 0) {
     const firstSub = subtitleToShow[0]
-    subtitleP[0].style.color = firstSub.color ? firstSub.color : defaultColor
+    subtitleP[0].style.color = firstSub.color ? firstSub.color : defaultFontColor
     subtitleP[0].innerText = firstSub.content
     if (subtitleToShow.length > 1) {
       const secondSub = subtitleToShow[1]
-      subtitleP[1].style.color = secondSub.color ? secondSub.color : defaultColor
+      subtitleP[1].style.color = secondSub.color ? secondSub.color : defaultFontColor
       subtitleP[1].innerText = secondSub.content
     } else {
       subtitleP[1].innerText = ''
-      subtitleP[1].style.color = defaultColor
+      subtitleP[1].style.color = defaultFontColor
     }
   } else {
-    subtitleP[0].style.color = defaultColor
-    subtitleP[1].style.color = defaultColor
+    subtitleP[0].style.color = defaultFontColor
+    subtitleP[1].style.color = defaultFontColor
     if (!subtitleP[0].innerText.includes('Load')) {
       subtitleP[0].innerText = ''
     }
@@ -118,33 +119,74 @@ function addElements() {
   switches.appendChild(button)
 
   // add display area
-  const newDiv = document.createElement("div")
-  newDiv.setAttribute("id", "load-subtitle-container")
-  newDiv.style.position = 'fixed'
-  newDiv.style.background = '#33333388'
-  newDiv.style.bottom = '50px'
-  newDiv.style.zIndex = 99
-  newDiv.style.minHeight = "4.5rem"
-  newDiv.style.width = "100%"
-  newDiv.style.display= "none"
-  newDiv.style.alignItems = 'center'
-  newDiv.style.justifyContent = 'center'
-  newDiv.style.flexDirection = 'column'
-  addNewP(newDiv)
-  addNewP(newDiv)
+  const subtitleContainer = document.createElement("div")
+  subtitleContainer.setAttribute("id", "subtitle-container")
+  subtitleContainer.style = 'position: fixed; bottom: 50px; z-index: 99; width: 100%; min-height: 4.5rem; display: none;'
+   + 'align-items: center; justify-content: center; flex-direction: column;'
+   subtitleContainer.style.backgroundColor = defaultBgColor + '88'
+  addNewP(subtitleContainer)
+  addNewP(subtitleContainer)
+  addColorBtn(subtitleContainer)
   const soundContainer = document.querySelector("#new_content")
-  soundContainer.insertBefore(newDiv, soundContainer.firstChild)
+  soundContainer.insertBefore(subtitleContainer, soundContainer.firstChild)
+
+  const controlPanel = document.createElement('div')
+  controlPanel.setAttribute("id", "subtitle-controller-panel")
+  controlPanel.style = 'position: fixed; top: 0; bottom: 0; left: 0; right: 0; margin: auto; width: 200px; height: 200px;'
+    + 'background-color: #EEE; border-radius: 10px; border-color: #333; padding:15px; display: none; flex-direction: column;'
+  addColorInput('subtitle-bg-color', controlPanel)
+  addColorInput('subtitle-font-color', controlPanel)
+  document.body.appendChild(controlPanel)
 }
 
 function addNewP(parentNode) {
   const newP = document.createElement("p")
   newP.setAttribute("class", "subtitle-line")
-  newP.style.width = "100%"
-  newP.style.color = '#EEEEEE'
+  newP.style = "width: 100%; text-align: center; text-shadow: 1px 1px 5px #EEE;"
   newP.style.fontSize =  1.5 * defaultSize + 'rem'
-  newP.style.textShadow = '0 0 #111'
-  newP.style.textAlign = 'center'
+  newP.style.color = defaultFontColor
   parentNode.appendChild(newP)
+}
+
+function addColorBtn(parentNode) {
+  const colorBtn = document.createElement("span")
+  colorBtn.setAttribute("class", "material-icons")
+  colorBtn.innerText = 'palette'
+  colorBtn.style.width = "1.5rem"
+  colorBtn.style.position = 'absolute'
+  colorBtn.style.left = '5px'
+  colorBtn.style.top = '5px'
+  colorBtn.style.cursor = 'pointer'
+  colorBtn.onclick = function() {
+    const controlPanel = document.getElementById('subtitle-controller-panel')
+    controlPanel.style.display = controlPanel.style.display === 'flex' ? 'none' : 'flex'
+    document.getElementById('subtitle-bg-color').value = defaultBgColor
+    document.getElementById('subtitle-font-color').value = defaultFontColor
+  }
+  parentNode.appendChild(colorBtn)
+}
+
+function addColorInput(key, parentNode) {
+  const label = document.createElement('label')
+  label.for = key
+  label.innerText = key + ': '
+  parentNode.appendChild(label)
+  const colorInput = document.createElement('input')
+  colorInput.style = 'margin: 0.4rem;'
+  colorInput.type = 'color'
+  colorInput.id = key
+  colorInput.onchange = function() {
+    if (key === 'subtitle-bg-color') {
+      document.getElementById('subtitle-container').style.background = colorInput.value + '88'
+      defaultBgColor = colorInput.value
+    } else if (key === 'subtitle-font-color') {
+      subtitleP[0].style.color = colorInput.value
+      subtitleP[1].style.color = colorInput.value
+      defaultFontColor = colorInput.value
+    }
+    localStorage.setItem(key, colorInput.value)
+  }
+  parentNode.appendChild(colorInput)
 }
 
 
@@ -171,7 +213,7 @@ function fetchSubtitleMap() {
           } else if (subtitleUrl.endsWith('.csv')) {
             parseCSV(text)
           }
-          let subtitleContainer = document.getElementById('load-subtitle-container')
+          let subtitleContainer = document.getElementById('subtitle-container')
           subtitleContainer.style.display = 'flex'
         })
       }
@@ -182,12 +224,11 @@ function fetchSubtitleMap() {
 const config = { attributes: true, childList: true, characterData: true };
 const observer = new MutationObserver(function(mutations) {
   mutations.forEach(function(mutation) {
-    // Respond to the mutation (e.g. update subtitle display)
     let time = mutation.target.innerText
     if (!time.startsWith('0')) {
       const [min, second] = document.querySelector('.mpsa').innerText.split(':').map((i) => parseInt(i))
-      const totalTime = document.querySelector('.mpsa').innerText
       duration = min * 60 + second
+      console.log('Duration: ' + duration)
       observer.disconnect()
     } 
   })
@@ -282,7 +323,7 @@ function parseCSV(text) {
         }
       }
     }
-    let color = defaultColor
+    let color = defaultFontColor
     let content = ''
     if (!currentLine.endsWith(',')) {
       const contentEndIndex = currentLine.indexOf(',#')
