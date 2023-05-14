@@ -7,7 +7,7 @@
     "48": "M-48.png",
     "128": "M-128.png" 
   },
-  "description": "Load local subtitle file and play on webpage",
+  "description": "Load soft subtitles for audio drama websites.",
   "action": {
     "default_icon": {             
       "16": "M-16.png",

@@ -142,7 +142,8 @@ function addElements() {
 function addNewP(parentNode) {
   const newP = document.createElement("p")
   newP.setAttribute("class", "subtitle-line")
-  newP.style = "width: 100%; text-align: center; text-shadow: 1px 1px 5px #EEE;"
+  newP.style = "width: 100%; text-align: center; font-weight: bold; -webkit-text-stroke: 0.7px #000; "
+  //text-shadow: 1px 1px 5px #111; -webkit-text-stroke-width: thin;
   newP.style.fontSize =  1.5 * defaultSize + 'rem'
   newP.style.color = defaultFontColor
   parentNode.appendChild(newP)
@@ -221,10 +222,10 @@ function fetchSubtitleMap() {
     .catch(error => console.error(error))
 }
 
-const config = { attributes: true, childList: true, characterData: true };
+const config = { attributes: true, childList: true, characterData: true }
 const observer = new MutationObserver(function(mutations) {
   mutations.forEach(function(mutation) {
-    let time = mutation.target.innerText
+    const time = mutation.target.innerText
     if (!time.startsWith('0')) {
       const [min, second] = document.querySelector('.mpsa').innerText.split(':').map((i) => parseInt(i))
       duration = min * 60 + second
@@ -240,17 +241,20 @@ window.addEventListener("load", function() {
   soundId = urlParams.get('id')
   // wait for the total time to show (not 0:00)
   const observerTarget = document.querySelector('.mpsa')
-  observer.observe(observerTarget, config)
+  if (observerTarget.innerText.startsWith('0')) {
+    observer.observe(observerTarget, config)
+  } else {
+    const [min, second] = document.querySelector('.mpsa').innerText.split(':').map((i) => parseInt(i))
+    duration = min * 60 + second
+    console.log('Duration: ' + duration)
+  }
   addElements()
   fetchSubtitleMap()
-  const interval = setInterval(function() {
+  setInterval(function() {
     const percent = document.querySelector('div.mpl').style.width.replace('%', '')
-    if (percent == 100) {
-      clearInterval(interval)
-    }
     const currentTime = parseFloat(percent) / 100 * duration
     refreshSubtitle(currentTime)
-  }, 100) 
+  }, 100)
 })
 
 function parseSRT(text) {
@@ -323,7 +327,7 @@ function parseCSV(text) {
         }
       }
     }
-    let color = defaultFontColor
+    let color = null
     let content = ''
     if (!currentLine.endsWith(',')) {
       const contentEndIndex = currentLine.indexOf(',#')
